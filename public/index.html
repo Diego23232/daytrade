@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>FiverTrade - OTC</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #121212;
+            color: #fff;
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            background-color: #1f1f1f;
+            padding: 10px;
+            text-align: center;
+        }
+        .container {
+            padding: 20px;
+        }
+        .section {
+            margin-bottom: 30px;
+        }
+        .btn {
+            padding: 10px 20px;
+            margin: 10px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .btn.sell {
+            background-color: #dc3545;
+        }
+        input, select {
+            padding: 10px;
+            margin: 10px;
+            width: 200px;
+        }
+        iframe {
+            border: none;
+            width: 100%;
+            height: 400px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>FIVERTRADE - OTC</h1>
+        <p>Gráfico BITCOIN/TETHERUS</p>
+    </header>
+    <div class="container">
+
+        <div class="section">
+            <label for="timeframe">Selecionar Timeframe:</label>
+            <select id="timeframe" onchange="updateIframe()">
+                <option value="1">1 minuto</option>
+                <option value="5">5 minutos</option>
+                <option value="15">15 minutos</option>
+            </select>
+        </div>
+
+        <div class="section">
+            <iframe id="tv-graph" src="https://s.tradingview.com/widgetembed/?symbol=BINANCE:BTCUSDT&interval=1&theme=dark"></iframe>
+        </div>
+
+        <div class="section">
+            <h2>Saldo Atual: R$<span id="saldo">--</span></h2>
+            <label>Valor da Operação:</label>
+            <input type="number" id="valor_aposta" min="1" value="10">
+            <br>
+            <button class="btn" onclick="apostar('high')">COMPRA</button>
+            <button class="btn sell" onclick="apostar('low')">VENDA</button>
+        </div>
+
+        <div class="section">
+            <h3>Depositar via Pix</h3>
+            <input type="number" id="valor_deposito" placeholder="Valor em R$">
+            <button class="btn" onclick="depositar()">Gerar QR Code</button>
+            <div id="qrcode_pix"></div>
+        </div>
+
+        <div class="section">
+            <h3>Solicitar Saque</h3>
+            <input type="text" id="chave_pix" placeholder="Sua Chave Pix">
+            <input type="number" id="valor_saque" placeholder="Valor a sacar">
+            <button class="btn sell" onclick="sacar()">Sacar</button>
+        </div>
+    </div>
+
+    <script>
+        function updateIframe() {
+            const timeframe = document.getElementById("timeframe").value;
+            const iframe = document.getElementById("tv-graph");
+            iframe.src = `https://s.tradingview.com/widgetembed/?symbol=BINANCE:BTCUSDT&interval=${timeframe}&theme=dark`;
+        }
+
+        function apostar(direction) {
+            const amount = parseFloat(document.getElementById("valor_aposta").value);
+            fetch("/bet", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ direction, amount })
+            }).then(res => res.json())
+              .then(data => {
+                if (data.balance !== undefined) {
+                    document.getElementById("saldo").innerText = data.balance.toFixed(2);
+                    alert(data.message || "Aposta realizada.");
+                } else {
+                    alert(data.error || "Erro.");
+                }
+            });
+        }
+
+function depositar() {
+    const valor = parseFloat(document.getElementById("valor_deposito").value);
+    if (!valor || valor <= 0) {
+        alert("Digite um valor válido.");
+        return;
+    }
+
+    fetch("/criar_pix", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ valor, usuario_id: "usuario123" })
+    }).then(res => res.json())
+      .then(data => {
+        console.log("Resposta do servidor:", data);
+        if (data.qr_code_base64) {
+            const img = `<img src="data:image/png;base64,${data.qr_code_base64}" alt="QR Code Pix" style="max-width:300px;">`;
+            document.getElementById("qrcode_pix").innerHTML = img;
+        } else if (data.erro) {
+            alert("Erro: " + data.erro);
+        } else {
+            alert("Erro ao gerar QR Code.");
+        }
+    }).catch(error => {
+        console.error("Erro na requisição:", error);
+        alert("Erro ao conectar com o servidor.");
+        
+    });
+}
+
+        function sacar() {
+            const chave_pix = document.getElementById("chave_pix").value;
+            const valor = parseFloat(document.getElementById("valor_saque").value);
+            fetch("/sacar", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ usuario_id: "usuario123", chave_pix, valor })
+            }).then(res => res.json())
+              .then(data => {
+                alert(data.mensagem || data.erro || "Resposta recebida.");
+            });
+        }
+
+        window.onload = function() {
+            fetch("/saldo/usuario123").then(res => res.json()).then(data => {
+                document.getElementById("saldo").innerText = data.saldo.toFixed(2);
+            });
+        }
+    </script>
+</body>
+</html>
