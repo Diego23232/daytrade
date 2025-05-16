@@ -40,7 +40,7 @@ def init_db():
 init_db()
 
 # SDK Mercado Pago com token direto (somente para testes!)
-MP_TOKEN = "APP_USR-960048901481072-051515-493dbb1ec5bc6efb85383b9413065362-2439306283"
+MP_TOKEN = "APP_USR-3410668227386246-051520-3d5b33b3b4cfc457c31e6552b3a1fbea-2439306283"
 sdk = mercadopago.SDK(MP_TOKEN)
 
 # Serve index.html e assets
